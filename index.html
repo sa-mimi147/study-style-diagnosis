@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>あなたにぴったりの勉強法診断</title>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --bg-color: #E3F2FD;
+            --text-color: #333;
+        }
+        body {
+            font-family: 'Zen Maru Gothic', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 { color: var(--primary-color); text-align: center; font-size: 1.5rem; }
+        .description { font-size: 0.9rem; margin-bottom: 20px; text-align: center; }
+        .question-item {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        input[type="checkbox"] {
+            width: 20px; height: 20px; margin-right: 15px;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        #result { display: none; text-align: center; animation: fadeIn 0.5s; }
+        .result-icon { font-size: 4rem; margin: 20px 0; }
+        .result-title { font-size: 1.4rem; font-weight: bold; color: var(--primary-color); }
+        .advice { background: #f9f9f9; padding: 15px; border-radius: 10px; text-align: left; margin-top: 15px; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="quiz-ui">
+        <h1>あなたにぴったりの勉強法診断</h1>
+        <p class="description">当てはまるものにチェックを入れてください</p>
+        
+        <div id="questions-list">
+            </div>
+
+        <button onclick="calculateResult()">診断結果を見る！</button>
+    </div>
+
+    <div id="result">
+        <div class="result-icon" id="res-icon"></div>
+        <div class="result-title" id="res-type"></div>
+        <p id="res-desc"></p>
+        <div class="advice">
+            <strong>💡 おすすめ勉強法:</strong>
+            <ul id="res-tips"></ul>
+        </div>
+        <button onclick="location.reload()">もう一度診断する</button>
+    </div>
+</div>
+
+<script>
+    const GAS_URL = 'YOUR_GAS_WEB_APP_URL_HERE';
+
+    const types = {
+        type1: { name: "視覚型学習者", icon: "👁️", desc: "図やグラフで理解するのが得意。カラフルなノートを作るのがおすすめ！", tips: ["マインドマップを使って情報を整理しよう", "カラーペンで重要な箇所を色分けするのが効果的", "YouTube動画や図解を積極的に活用しよう"], 
+                 questions: ["教科書の図やイラストに目が止まることが多い", "カラーペンやマーカーを使ってノートを取るのが好き"] },
+        type2: { name: "聴覚型学習者", icon: "🎧", desc: "聞いて理解するのが得意。音読や講義形式がおすすめ！", tips: ["声に出して読む「音読勉強法」が効果的", "友達に説明することで理解が深まる", "軽いBGMをかけながら勉強すると集中しやすい"], 
+                 questions: ["授業を聞いているだけで内容がスッと入ってくることが多い", "音読すると内容を覚えやすいと感じる"] },
+        type3: { name: "体験型学習者", icon: "✍️", desc: "実際に書いたり体を動かしたりすることで理解が深まるタイプ。反復練習や実験が向いています！", tips: ["何度も書いて覚える「反復書き取り」が効果的", "実験や体験型の学習に積極的に参加しよう", "ポモドーロ法で集中力UP"], 
+                 questions: ["実際に手を動かしてやってみることで理解できることが多い", "体験したことや実験の内容はよく覚えている"] },
+        type4: { name: "読み書き型学習者", icon: "📖", desc: "文章を読んで整理することが得意。ノートにまとめることで理解が深まるタイプです。", tips: ["丁寧にノートを取り、自分の言葉でまとめ直そう", "箇条書きやリストで情報を整理するのが効果的", "問題を自分で作って解く「自作問題法」がおすすめ"], 
+                 questions: ["教科書や参考書を読んで自分でまとめるのが好き", "文章を箇条書きやリストに整理するのが得意"] },
+        type5: { name: "論理型学習者", icon: "🧩", desc: "理由や仕組みから理解するのが得意。「なぜ？」を追求することで力を発揮するタイプです。", tips: ["「なぜそうなるのか」を徹底的に調べてみよう", "原理・原則から覚えることで応用力がつく", "問題を解く前に「解法の流れ」を考える習慣をつけよう"], 
+                 questions: ["「なぜそうなるのか」理由がわかると納得できる", "仕組みや原理から理解しようとする方だ"] }
+    };
+
+    // 質問を表示
+    const qList = document.getElementById('questions-list');
+    Object.keys(types).forEach(typeKey => {
+        types[typeKey].questions.forEach((qText, index) => {
+            const div = document.createElement('label');
+            div.className = 'question-item';
+            div.innerHTML = `<input type="checkbox" name="${typeKey}"> <span>${qText}</span>`;
+            qList.appendChild(div);
+        });
+    });
+
+    async function calculateResult() {
+        const scores = {};
+        let maxScore = -1;
+        let resultKey = 'type1';
+
+        Object.keys(types).forEach(typeKey => {
+            const count = document.querySelectorAll(`input[name="${typeKey}"]:checked`).length;
+            scores[typeKey] = count;
+            if (count > maxScore) {
+                maxScore = count;
+                resultKey = typeKey;
+            }
+        });
+
+        showResult(resultKey);
+        await sendData(resultKey, scores);
+    }
+
+    function showResult(key) {
+        document.getElementById('quiz-ui').style.display = 'none';
+        document.getElementById('result').style.display = 'block';
+        document.getElementById('res-icon').innerText = types[key].icon;
+        document.getElementById('res-type').innerText = types[key].name;
+        document.getElementById('res-desc').innerText = types[key].desc;
+        const tipsList = document.getElementById('res-tips');
+        tipsList.innerHTML = '';
+        types[key].tips.forEach(tip => {
+            const li = document.createElement('li');
+            li.innerText = tip;
+            tipsList.appendChild(li);
+        });
+    }
+
+    async function sendData(resultType, scores) {
+        // おおよその地域とデバイス情報を取得
+        let location = "不明";
+        try {
+            const geo = await fetch('https://ipapi.co/json/').then(res => res.json());
+            location = `${geo.region} ${geo.city}`;
+        } catch (e) { console.log("Geo fetch error"); }
+
+        const payload = {
+            timestamp: new Date().toLocaleString('ja-JP'),
+            result: types[resultType].name,
+            scores: scores,
+            location: location,
+            device: `${navigator.userAgent.includes("Mobi") ? "スマホ" : "PC"} / ${navigator.platform}`
+        };
+
+        const formData = new URLSearchParams();
+        formData.append('data', JSON.stringify(payload));
+
+        try {
+            await fetch(GAS_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: formData,
+            });
+        } catch (error) {
+            console.error('Error sending to GAS:', error);
+        }
+    }
+</script>
+</body>
+</html>
